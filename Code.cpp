@@ -1,144 +1,215 @@
-#include <bits/stdc++.h>
-#include <unordered_set>
-using namespace std ;
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <string>
+#include <algorithm>
 
-typedef pair<string,int> P ;
-struct Order {
-    bool operator()(P const& a, P const& b) const {
-        if (a.second != b.second) return a.second > b.second;
-        int n = a.first.size();
-        int m = b.first.size();
-        int k = min(n, m);
-        for (int i = 0; i < k; i++) {
-            if (a.first[i] != b.first[i]) return a.first[i] < b.first[i];
-        }
-        return n < m;
-    }
-};
+using namespace std;
 
-class TrieNode {
+class Node {
 public:
-    vector<TrieNode*> children;
-    int isEnd;
-    TrieNode() {
-        isEnd = 0;
-        children = vector<TrieNode*>(256, nullptr);
+    Node* links[256];
+    int frequency;
+
+    Node() {
+        frequency = 0;
+        for (int i = 0; i < 256; i++) {
+            links[i] = nullptr;
+        }
+    }
+
+    bool contains(int index) {
+        return links[index] != nullptr;
+    }
+
+    void put(int index, Node* node) {
+        links[index] = node;
+    }
+
+    Node* get(int index) {
+        return links[index];
+    }
+
+    void updateFrequency(int times) {
+        frequency += times;
     }
 };
+
+int char2int(char ch) {
+    return static_cast<int>(ch);
+}
+
+char int2char(int i) {
+    return static_cast<char>(i);
+}
 
 class Trie {
 public:
-    TrieNode* root;
+    Node* root;
+
     Trie() {
-        root = new TrieNode();
+        root = new Node();
     }
-    int char2int(char c) {
-        return int(c);
-    }
-    char int2char(int num) {
-        return char(num);
-    }
-    void insert(string s) {
-        TrieNode* curr = root;
-        for (auto c : s) {
-            int cNum = char2int(c);
-            if (curr->children[cNum] == nullptr) curr->children[cNum] = new TrieNode();
-            curr = curr->children[cNum];
+
+    void insert(string &word, int times) {
+        Node* node = root;
+        for (char c : word) {
+            int index = char2int(c);
+
+            if (!node->contains(index)) {
+                node->put(index, new Node());
+            }
+
+            node = node->get(index);
         }
-        curr->isEnd++;
+        node->updateFrequency(times);
     }
-    vector<string> find(string s) {
-        priority_queue<P, vector<P>, Order> q;
-        vector<string> out;
-        TrieNode* curr = root;
-        for (auto c : s) {
-            int cNum = char2int(c);
-            if (curr->children[cNum] == nullptr) return out;
-            curr = curr->children[cNum];
-        }
-        string currAccum = s;
-        dfs(curr, q, currAccum);
-        while (!q.empty()) {
-            out.push_back(q.top().first);
-            q.pop();
-        }
-        reverse(out.begin(), out.end());
-        return out;
+
+   void dfs(Node* node, string currString, vector<pair<int, string>>& possibleSentences) {
+    if (node->frequency != 0) {
+        possibleSentences.push_back({ node->frequency, currString });
     }
-    void dfs(TrieNode* node, priority_queue<P, vector<P>, Order>& q, string& currAccum) {
-        if (node->isEnd > 0) {
-            q.push(make_pair(currAccum, node->isEnd));
-            if (q.size() > 3) q.pop();
+
+    for (int i = 0; i < 256; i++) {
+        if (node->contains(i)) {
+            Node* nextNode = node->get(i);
+            char nextChar = int2char(i);
+            string nextString = currString + nextChar; // Create a new string for each branch
+            dfs(nextNode, nextString, possibleSentences);
         }
-        for (int i = 0; i < 27; i++) {
-            if (node->children[i] != nullptr) {
-                currAccum.push_back(int2char(i));
-                dfs(node->children[i], q, currAccum);
-                currAccum.pop_back();
+    }
+}
+
+private:
+
+ ~Trie() {
+        deleteNodes(root);
+    }
+
+    void deleteNodes(Node* node) {
+        if (node == nullptr) {
+            return;
+        }
+ 
+        for (int i = 0; i < 256; i++) {
+            if (node->contains(i)) {
+                deleteNodes(node->get(i));
             }
         }
+
+        delete node;
     }
+
 };
 
-class SearchAutoCompleteSystem {
+bool comparator(const pair<int, string>& p1, const pair<int, string>& p2) {
+    if (p1.first > p2.first) return true;
+    else if (p1.first < p2.first) return false;
+    else {
+        return p1.second < p2.second;
+    }
+}
+
+vector<string> Top3sentences(vector<pair<int, string>>& possibleSentences) {
+    vector<string> ans;
+    sort(possibleSentences.begin(), possibleSentences.end(), comparator);
+
+    int size = possibleSentences.size();
+
+    for (int hot = 0; hot < 3 && hot < size; hot++) {
+        ans.push_back(possibleSentences[hot].second);
+    }
+
+    return ans;
+}
+
+class AutocompleteSystem {
 public:
-    Trie* trie;
     string currString;
-    SearchAutoCompleteSystem(vector<string>& sentences, vector<int>& times) {
-        trie = new Trie();
-        int n = sentences.size();
-        for (int i = 0; i < n; i++) {
-            for (int j = 0; j < times[i]; j++) {
-                trie->insert(sentences[i]);
-            }
+    Trie* t;
+    Node* currNode;
+
+    AutocompleteSystem(vector<string>& sentences, vector<int>& times) {
+        currString = "";
+        t = new Trie();
+        currNode = t->root;
+
+        for (size_t i = 0; i < sentences.size(); i++) {
+            t->insert(sentences[i], times[i]);
         }
     }
-    
+
     vector<string> input(char c) {
+        vector<pair<int, string>> possibleSentences;
+
         if (c == '#') {
-            trie->insert(currString);
+            t->insert(currString, 1);
             currString = "";
+            currNode = t->root; // Reset the current node to the root.
             return vector<string>();
         }
+
         currString.push_back(c);
-        return trie->find(currString);
+        if (currNode == nullptr || !currNode->contains(char2int(c))) {
+            currNode = nullptr;
+            return vector<string>();
+        }
+        currNode = currNode->get(char2int(c)); // Update the current node based on the input character.
+        t->dfs(currNode, currString, possibleSentences);
+
+        return Top3sentences(possibleSentences);
+
     }
+
 };
 
 int main() {
-    fstream f ;
-    f.open("cache.txt",ios::in);
-    vector<string> sentences ;
-    unordered_map<string,int> m ;
-    vector<int> times ;
-    while(!f.eof()) {
-        string s ;
-        int fq ; 
-        f>>s>>fq ;
-        m[s]=fq ;
-        sentences.push_back(s);
-        times.push_back(fq);
+    ifstream inputFile("input.txt"); // Open the input file
+
+    if (!inputFile.is_open()) {
+        cerr << "Error opening input file." << endl;
+        return 1;
     }
-    f.close();
-    SearchAutoCompleteSystem* System = new SearchAutoCompleteSystem(sentences,times);
-    char c ; 
-    string terms="" ;
-    cout<<"Enter Word " ;
-    while(true) {
-        cin>>c ;
-        system("clear");
-        if(c=='#') break ;
-        terms+=c ;
-        vector<string> ans = System->input(c);
-        cout<<"Showing Results for "<<terms<<endl ;
-        for(auto &t : ans) cout<<t<<endl ;
+
+    vector<string> sentences;
+    vector<int> times;
+
+    // Read sentences and times from the file
+    int numSentences;
+    inputFile >> numSentences;
+
+    for (int i = 0; i < numSentences; ++i) {
+        string sentence;
+        inputFile >> sentence;
+        sentences.push_back(sentence);
     }
-    m[terms]++ ;
-    f.open("cache.txt",ios::out);
-    f<<sentences.size()<<endl ;
-    for(auto &p : m) {
-        f<<p.first<<" "<<p.second<<endl ;
+
+    for (int i = 0; i < numSentences; ++i) {
+        int time;
+        inputFile >> time;
+        times.push_back(time);
     }
-    f.close();
-    return 0 ;
+
+    // Create an instance of AutocompleteSystem
+    AutocompleteSystem autocompleteSystem(sentences, times);
+
+    // Process input from the file
+    char c;
+    while (inputFile >> c) {
+        // Call the input function with the character
+        vector<string> result = autocompleteSystem.input(c);
+
+        // Display the autocomplete suggestions
+       int count=1;
+
+        for (const string& suggestion : result) {
+            cout << "Suggestion " <<count<<" : "<< suggestion << endl;
+            count++;
+        }
+    }
+
+    // Close the input file
+    inputFile.close();
+
+    return 0;
 }
