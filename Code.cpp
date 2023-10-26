@@ -190,18 +190,17 @@ int main() {
         times.push_back(time);
     }
 
-    // Create an instance of AutocompleteSystem
+    // Creating an instance of AutocompleteSystem
     AutocompleteSystem autocompleteSystem(sentences, times);
 
     // Process input from the file
     char c;
     while (inputFile >> c) {
-        // Call the input function with the character
+
         vector<string> result = autocompleteSystem.input(c);
 
-        // Display the autocomplete suggestions
+        // Displaying the autocomplete suggestions
        int count=1;
-
         for (const string& suggestion : result) {
             cout << "Suggestion " <<count<<" : "<< suggestion << endl;
             count++;
