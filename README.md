@@ -1,6 +1,5 @@
 # Search Autocomplete System
 Input.txt
-
 As a Sample input I have inserted some sentences that I assumed have been searched multiple times.
 
 # SearchAutoCompleteSystem.cpp
