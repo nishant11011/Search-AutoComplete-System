@@ -1,4 +1,4 @@
-# Browser-History-Search Autocomplete System
+# Search Autocomplete System
 Cache.txt
 As a Sample input we have inserted some sentences that we assumed have been searched multiple times.
 
