@@ -164,8 +164,8 @@ public:
 };
 
 int main() {
-    ifstream inputFile("input.txt"); // Open the input file
-
+    ifstream inputFile; // Open the input file
+    inputFile.open("input.txt");
     if (!inputFile.is_open()) {
         cerr << "Error opening input file." << endl;
         return 1;
@@ -177,12 +177,15 @@ int main() {
     // Read sentences and times from the file
     int numSentences;
     inputFile >> numSentences;
+    inputFile.ignore();
 
     for (int i = 0; i < numSentences; ++i) {
         string sentence;
-        inputFile >> sentence;
+        //getline is used to take sentences as input instead of just words.
+       getline(inputFile, sentence,'\n');
         sentences.push_back(sentence);
     }
+    
 
     for (int i = 0; i < numSentences; ++i) {
         int time;
